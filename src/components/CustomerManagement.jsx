@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table.jsx'
 import { Plus, Edit, Trash2, Phone, Mail, MapPin } from 'lucide-react'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001' // Fallback for local development
+
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -25,30 +27,12 @@ const CustomerManagement = () => {
 
   const fetchCustomers = async () => {
     try {
-      // For now, we'll use mock data
-      setCustomers([
-        {
-          id: 1,
-          name: 'John Smith',
-          phone: '(555) 123-4567',
-          email: 'john.smith@email.com',
-          address: '123 Main St, Anytown, ST 12345'
-        },
-        {
-          id: 2,
-          name: 'Sarah Johnson',
-          phone: '(555) 987-6543',
-          email: 'sarah.johnson@email.com',
-          address: '789 Pine St, Somewhere, ST 67890'
-        },
-        {
-          id: 3,
-          name: 'Mike Davis',
-          phone: '(555) 456-7890',
-          email: 'mike.davis@email.com',
-          address: '555 Cedar Rd, Elsewhere, ST 54321'
-        }
-      ])
+      const response = await fetch(`${API_BASE_URL}/api/customers`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setCustomers(data)
     } catch (error) {
       console.error('Error fetching customers:', error)
     }
@@ -57,22 +41,32 @@ const CustomerManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
+      let response
       if (editingCustomer) {
         // Update existing customer
-        setCustomers(customers.map(customer => 
-          customer.id === editingCustomer.id 
-            ? { ...customer, ...formData }
-            : customer
-        ))
+        response = await fetch(`${API_BASE_URL}/api/customers/${editingCustomer.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        })
       } else {
         // Add new customer
-        const newCustomer = {
-          id: Date.now(),
-          ...formData
-        }
-        setCustomers([...customers, newCustomer])
+        response = await fetch(`${API_BASE_URL}/api/customers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        })
       }
-      
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      fetchCustomers() // Re-fetch customers to update the list
       resetForm()
       setIsDialogOpen(false)
     } catch (error) {
@@ -94,7 +88,13 @@ const CustomerManagement = () => {
   const handleDelete = async (customerId) => {
     if (window.confirm('Are you sure you want to delete this customer?')) {
       try {
-        setCustomers(customers.filter(customer => customer.id !== customerId))
+        const response = await fetch(`${API_BASE_URL}/api/customers/${customerId}`, {
+          method: 'DELETE'
+        })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        fetchCustomers() // Re-fetch customers to update the list
       } catch (error) {
         console.error('Error deleting customer:', error)
       }
@@ -140,7 +140,7 @@ const CustomerManagement = () => {
                     {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
                   </DialogTitle>
                   <DialogDescription>
-                    {editingCustomer 
+                    {editingCustomer
                       ? 'Update customer information below.'
                       : 'Enter customer details to add them to your database.'
                     }
@@ -153,7 +153,7 @@ const CustomerManagement = () => {
                       <Input
                         id="name"
                         value={formData.name}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         required
                       />
                     </div>
@@ -163,7 +163,7 @@ const CustomerManagement = () => {
                         id="phone"
                         type="tel"
                         value={formData.phone}
-                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         required
                       />
                     </div>
@@ -173,7 +173,7 @@ const CustomerManagement = () => {
                         id="email"
                         type="email"
                         value={formData.email}
-                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       />
                     </div>
                     <div className="grid gap-2">
@@ -181,7 +181,7 @@ const CustomerManagement = () => {
                       <Textarea
                         id="address"
                         value={formData.address}
-                        onChange={(e) => setFormData({...formData, address: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                         rows={3}
                       />
                     </div>
@@ -264,4 +264,5 @@ const CustomerManagement = () => {
 }
 
 export default CustomerManagement
+
 

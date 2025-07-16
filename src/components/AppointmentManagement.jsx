@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge.jsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
 import { Plus, Edit, Trash2, Calendar, Clock, MapPin, DollarSign } from 'lucide-react'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001' // Fallback for local development
+
 const AppointmentManagement = () => {
   const [appointments, setAppointments] = useState([])
   const [customers, setCustomers] = useState([])
@@ -38,57 +40,12 @@ const AppointmentManagement = () => {
 
   const fetchAppointments = async () => {
     try {
-      // Mock data for appointments
-      setAppointments([
-        {
-          id: 1,
-          customer_id: 1,
-          crew_id: 1,
-          appointment_date: '2025-07-16',
-          appointment_time: '09:00',
-          estimated_duration: 240,
-          origin_address: '123 Main St, Anytown, ST 12345',
-          destination_address: '456 Oak Ave, Newtown, ST 67890',
-          status: 'scheduled',
-          notes: 'Large 3-bedroom house move',
-          estimated_cost: 1200,
-          actual_cost: null,
-          customer: { name: 'John Smith', phone: '(555) 123-4567' },
-          crew: { name: 'Team Alpha' }
-        },
-        {
-          id: 2,
-          customer_id: 2,
-          crew_id: 2,
-          appointment_date: '2025-07-16',
-          appointment_time: '14:00',
-          estimated_duration: 180,
-          origin_address: '789 Pine St, Somewhere, ST 67890',
-          destination_address: '321 Elm St, Elsewhere, ST 54321',
-          status: 'in_progress',
-          notes: '2-bedroom apartment move',
-          estimated_cost: 800,
-          actual_cost: null,
-          customer: { name: 'Sarah Johnson', phone: '(555) 987-6543' },
-          crew: { name: 'Team Beta' }
-        },
-        {
-          id: 3,
-          customer_id: 3,
-          crew_id: 1,
-          appointment_date: '2025-07-15',
-          appointment_time: '10:30',
-          estimated_duration: 300,
-          origin_address: '555 Cedar Rd, Elsewhere, ST 54321',
-          destination_address: '777 Maple Dr, Anytown, ST 12345',
-          status: 'completed',
-          notes: 'Office relocation',
-          estimated_cost: 1500,
-          actual_cost: 1450,
-          customer: { name: 'Mike Davis', phone: '(555) 456-7890' },
-          crew: { name: 'Team Alpha' }
-        }
-      ])
+      const response = await fetch(`${API_BASE_URL}/api/appointments`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setAppointments(data)
     } catch (error) {
       console.error('Error fetching appointments:', error)
     }
@@ -96,11 +53,12 @@ const AppointmentManagement = () => {
 
   const fetchCustomers = async () => {
     try {
-      setCustomers([
-        { id: 1, name: 'John Smith' },
-        { id: 2, name: 'Sarah Johnson' },
-        { id: 3, name: 'Mike Davis' }
-      ])
+      const response = await fetch(`${API_BASE_URL}/api/customers`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setCustomers(data)
     } catch (error) {
       console.error('Error fetching customers:', error)
     }
@@ -108,10 +66,12 @@ const AppointmentManagement = () => {
 
   const fetchCrews = async () => {
     try {
-      setCrews([
-        { id: 1, name: 'Team Alpha' },
-        { id: 2, name: 'Team Beta' }
-      ])
+      const response = await fetch(`${API_BASE_URL}/api/crews`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setCrews(data)
     } catch (error) {
       console.error('Error fetching crews:', error)
     }
@@ -120,40 +80,39 @@ const AppointmentManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      const customer = customers.find(c => c.id === parseInt(formData.customer_id))
-      const crew = crews.find(c => c.id === parseInt(formData.crew_id))
-      
-      if (editingAppointment) {
-        setAppointments(appointments.map(appointment => 
-          appointment.id === editingAppointment.id 
-            ? { 
-                ...appointment, 
-                ...formData,
-                customer_id: parseInt(formData.customer_id),
-                crew_id: parseInt(formData.crew_id),
-                estimated_duration: parseInt(formData.estimated_duration) || null,
-                estimated_cost: parseFloat(formData.estimated_cost) || null,
-                actual_cost: parseFloat(formData.actual_cost) || null,
-                customer,
-                crew
-              }
-            : appointment
-        ))
-      } else {
-        const newAppointment = {
-          id: Date.now(),
-          ...formData,
-          customer_id: parseInt(formData.customer_id),
-          crew_id: parseInt(formData.crew_id),
-          estimated_duration: parseInt(formData.estimated_duration) || null,
-          estimated_cost: parseFloat(formData.estimated_cost) || null,
-          actual_cost: parseFloat(formData.actual_cost) || null,
-          customer,
-          crew
-        }
-        setAppointments([...appointments, newAppointment])
+      let response
+      const payload = {
+        ...formData,
+        customer_id: parseInt(formData.customer_id),
+        crew_id: formData.crew_id ? parseInt(formData.crew_id) : null,
+        estimated_duration: formData.estimated_duration ? parseInt(formData.estimated_duration) : null,
+        estimated_cost: formData.estimated_cost ? parseFloat(formData.estimated_cost) : null,
+        actual_cost: formData.actual_cost ? parseFloat(formData.actual_cost) : null,
       }
-      
+
+      if (editingAppointment) {
+        response = await fetch(`${API_BASE_URL}/api/appointments/${editingAppointment.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        })
+      } else {
+        response = await fetch(`${API_BASE_URL}/api/appointments`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        })
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      fetchAppointments()
       resetForm()
       setIsDialogOpen(false)
     } catch (error) {
@@ -165,7 +124,7 @@ const AppointmentManagement = () => {
     setEditingAppointment(appointment)
     setFormData({
       customer_id: appointment.customer_id.toString(),
-      crew_id: appointment.crew_id.toString(),
+      crew_id: appointment.crew_id?.toString() || '',
       appointment_date: appointment.appointment_date,
       appointment_time: appointment.appointment_time,
       estimated_duration: appointment.estimated_duration?.toString() || '',
@@ -182,7 +141,13 @@ const AppointmentManagement = () => {
   const handleDelete = async (appointmentId) => {
     if (window.confirm('Are you sure you want to delete this appointment?')) {
       try {
-        setAppointments(appointments.filter(appointment => appointment.id !== appointmentId))
+        const response = await fetch(`${API_BASE_URL}/api/appointments/${appointmentId}`, {
+          method: 'DELETE'
+        })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        fetchAppointments()
       } catch (error) {
         console.error('Error deleting appointment:', error)
       }
@@ -191,11 +156,21 @@ const AppointmentManagement = () => {
 
   const handleStatusUpdate = async (appointmentId, newStatus) => {
     try {
-      setAppointments(appointments.map(appointment => 
-        appointment.id === appointmentId 
-          ? { ...appointment, status: newStatus }
-          : appointment
-      ))
+      const appointmentToUpdate = appointments.find(app => app.id === appointmentId)
+      if (!appointmentToUpdate) return
+
+      const response = await fetch(`${API_BASE_URL}/api/appointments/${appointmentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ...appointmentToUpdate, status: newStatus })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      fetchAppointments()
     } catch (error) {
       console.error('Error updating status:', error)
     }
@@ -264,7 +239,7 @@ const AppointmentManagement = () => {
                     {editingAppointment ? 'Edit Appointment' : 'Schedule New Appointment'}
                   </DialogTitle>
                   <DialogDescription>
-                    {editingAppointment 
+                    {editingAppointment
                       ? 'Update appointment details below.'
                       : 'Fill in the details to schedule a new moving appointment.'
                     }
@@ -275,9 +250,9 @@ const AppointmentManagement = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
                         <Label htmlFor="customer">Customer *</Label>
-                        <Select 
-                          value={formData.customer_id} 
-                          onValueChange={(value) => setFormData({...formData, customer_id: value})}
+                        <Select
+                          value={formData.customer_id}
+                          onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
                           required
                         >
                           <SelectTrigger>
@@ -294,9 +269,9 @@ const AppointmentManagement = () => {
                       </div>
                       <div className="grid gap-2">
                         <Label htmlFor="crew">Crew</Label>
-                        <Select 
-                          value={formData.crew_id} 
-                          onValueChange={(value) => setFormData({...formData, crew_id: value})}
+                        <Select
+                          value={formData.crew_id}
+                          onValueChange={(value) => setFormData({ ...formData, crew_id: value })}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select crew" />
@@ -311,7 +286,7 @@ const AppointmentManagement = () => {
                         </Select>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-3 gap-4">
                       <div className="grid gap-2">
                         <Label htmlFor="date">Date *</Label>
@@ -319,7 +294,7 @@ const AppointmentManagement = () => {
                           id="date"
                           type="date"
                           value={formData.appointment_date}
-                          onChange={(e) => setFormData({...formData, appointment_date: e.target.value})}
+                          onChange={(e) => setFormData({ ...formData, appointment_date: e.target.value })}
                           required
                         />
                       </div>
@@ -329,7 +304,7 @@ const AppointmentManagement = () => {
                           id="time"
                           type="time"
                           value={formData.appointment_time}
-                          onChange={(e) => setFormData({...formData, appointment_time: e.target.value})}
+                          onChange={(e) => setFormData({ ...formData, appointment_time: e.target.value })}
                           required
                         />
                       </div>
@@ -339,7 +314,7 @@ const AppointmentManagement = () => {
                           id="duration"
                           type="number"
                           value={formData.estimated_duration}
-                          onChange={(e) => setFormData({...formData, estimated_duration: e.target.value})}
+                          onChange={(e) => setFormData({ ...formData, estimated_duration: e.target.value })}
                           placeholder="240"
                         />
                       </div>
@@ -350,7 +325,7 @@ const AppointmentManagement = () => {
                       <Textarea
                         id="origin"
                         value={formData.origin_address}
-                        onChange={(e) => setFormData({...formData, origin_address: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, origin_address: e.target.value })}
                         placeholder="Starting address"
                         required
                         rows={2}
@@ -362,7 +337,7 @@ const AppointmentManagement = () => {
                       <Textarea
                         id="destination"
                         value={formData.destination_address}
-                        onChange={(e) => setFormData({...formData, destination_address: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, destination_address: e.target.value })}
                         placeholder="Ending address"
                         required
                         rows={2}
@@ -372,9 +347,9 @@ const AppointmentManagement = () => {
                     <div className="grid grid-cols-3 gap-4">
                       <div className="grid gap-2">
                         <Label htmlFor="status">Status</Label>
-                        <Select 
-                          value={formData.status} 
-                          onValueChange={(value) => setFormData({...formData, status: value})}
+                        <Select
+                          value={formData.status}
+                          onValueChange={(value) => setFormData({ ...formData, status: value })}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -394,7 +369,7 @@ const AppointmentManagement = () => {
                           type="number"
                           step="0.01"
                           value={formData.estimated_cost}
-                          onChange={(e) => setFormData({...formData, estimated_cost: e.target.value})}
+                          onChange={(e) => setFormData({ ...formData, estimated_cost: e.target.value })}
                           placeholder="1200.00"
                         />
                       </div>
@@ -405,7 +380,7 @@ const AppointmentManagement = () => {
                           type="number"
                           step="0.01"
                           value={formData.actual_cost}
-                          onChange={(e) => setFormData({...formData, actual_cost: e.target.value})}
+                          onChange={(e) => setFormData({ ...formData, actual_cost: e.target.value })}
                           placeholder="1150.00"
                         />
                       </div>
@@ -416,7 +391,7 @@ const AppointmentManagement = () => {
                       <Textarea
                         id="notes"
                         value={formData.notes}
-                        onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                         placeholder="Additional notes about the move"
                         rows={3}
                       />
@@ -490,8 +465,8 @@ const AppointmentManagement = () => {
                     {appointment.crew?.name || 'Unassigned'}
                   </TableCell>
                   <TableCell>
-                    <Select 
-                      value={appointment.status} 
+                    <Select
+                      value={appointment.status}
                       onValueChange={(value) => handleStatusUpdate(appointment.id, value)}
                     >
                       <SelectTrigger className="w-32">
@@ -552,4 +527,5 @@ const AppointmentManagement = () => {
 }
 
 export default AppointmentManagement
+
 

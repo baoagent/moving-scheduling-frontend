@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge.jsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
 import { Plus, Edit, Trash2, Users, UserPlus } from 'lucide-react'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001' // Fallback for local development
+
 const CrewManagement = () => {
   const [crews, setCrews] = useState([])
   const [crewMembers, setCrewMembers] = useState([])
@@ -37,30 +39,12 @@ const CrewManagement = () => {
 
   const fetchCrews = async () => {
     try {
-      // Mock data for crews
-      setCrews([
-        {
-          id: 1,
-          name: 'Team Alpha',
-          description: 'Primary moving crew for large jobs',
-          is_active: true,
-          members: [
-            { id: 1, name: 'John Doe', position: 'Team Lead' },
-            { id: 2, name: 'Jane Smith', position: 'Driver' },
-            { id: 3, name: 'Bob Wilson', position: 'Helper' }
-          ]
-        },
-        {
-          id: 2,
-          name: 'Team Beta',
-          description: 'Secondary crew for smaller moves',
-          is_active: true,
-          members: [
-            { id: 4, name: 'Alice Brown', position: 'Team Lead' },
-            { id: 5, name: 'Charlie Davis', position: 'Helper' }
-          ]
-        }
-      ])
+      const response = await fetch(`${API_BASE_URL}/api/crews`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setCrews(data)
     } catch (error) {
       console.error('Error fetching crews:', error)
     }
@@ -68,14 +52,12 @@ const CrewManagement = () => {
 
   const fetchCrewMembers = async () => {
     try {
-      // Mock data for crew members
-      setCrewMembers([
-        { id: 1, name: 'John Doe', phone: '(555) 111-1111', email: 'john.doe@company.com', position: 'Team Lead', is_active: true },
-        { id: 2, name: 'Jane Smith', phone: '(555) 222-2222', email: 'jane.smith@company.com', position: 'Driver', is_active: true },
-        { id: 3, name: 'Bob Wilson', phone: '(555) 333-3333', email: 'bob.wilson@company.com', position: 'Helper', is_active: true },
-        { id: 4, name: 'Alice Brown', phone: '(555) 444-4444', email: 'alice.brown@company.com', position: 'Team Lead', is_active: true },
-        { id: 5, name: 'Charlie Davis', phone: '(555) 555-5555', email: 'charlie.davis@company.com', position: 'Helper', is_active: true }
-      ])
+      const response = await fetch(`${API_BASE_URL}/api/crew_members`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      setCrewMembers(data)
     } catch (error) {
       console.error('Error fetching crew members:', error)
     }
@@ -84,21 +66,30 @@ const CrewManagement = () => {
   const handleCrewSubmit = async (e) => {
     e.preventDefault()
     try {
+      let response
       if (editingCrew) {
-        setCrews(crews.map(crew => 
-          crew.id === editingCrew.id 
-            ? { ...crew, ...crewFormData }
-            : crew
-        ))
+        response = await fetch(`${API_BASE_URL}/api/crews/${editingCrew.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(crewFormData)
+        })
       } else {
-        const newCrew = {
-          id: Date.now(),
-          ...crewFormData,
-          members: []
-        }
-        setCrews([...crews, newCrew])
+        response = await fetch(`${API_BASE_URL}/api/crews`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(crewFormData)
+        })
       }
-      
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      fetchCrews()
       resetCrewForm()
       setIsCrewDialogOpen(false)
     } catch (error) {
@@ -109,20 +100,30 @@ const CrewManagement = () => {
   const handleMemberSubmit = async (e) => {
     e.preventDefault()
     try {
+      let response
       if (editingMember) {
-        setCrewMembers(crewMembers.map(member => 
-          member.id === editingMember.id 
-            ? { ...member, ...memberFormData }
-            : member
-        ))
+        response = await fetch(`${API_BASE_URL}/api/crew_members/${editingMember.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(memberFormData)
+        })
       } else {
-        const newMember = {
-          id: Date.now(),
-          ...memberFormData
-        }
-        setCrewMembers([...crewMembers, newMember])
+        response = await fetch(`${API_BASE_URL}/api/crew_members`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(memberFormData)
+        })
       }
-      
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      fetchCrewMembers()
       resetMemberForm()
       setIsMemberDialogOpen(false)
     } catch (error) {
@@ -155,7 +156,13 @@ const CrewManagement = () => {
   const handleDeleteCrew = async (crewId) => {
     if (window.confirm('Are you sure you want to delete this crew?')) {
       try {
-        setCrews(crews.filter(crew => crew.id !== crewId))
+        const response = await fetch(`${API_BASE_URL}/api/crews/${crewId}`, {
+          method: 'DELETE'
+        })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        fetchCrews()
       } catch (error) {
         console.error('Error deleting crew:', error)
       }
@@ -165,7 +172,13 @@ const CrewManagement = () => {
   const handleDeleteMember = async (memberId) => {
     if (window.confirm('Are you sure you want to delete this crew member?')) {
       try {
-        setCrewMembers(crewMembers.filter(member => member.id !== memberId))
+        const response = await fetch(`${API_BASE_URL}/api/crew_members/${memberId}`, {
+          method: 'DELETE'
+        })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        fetchCrewMembers()
       } catch (error) {
         console.error('Error deleting crew member:', error)
       }
@@ -217,7 +230,7 @@ const CrewManagement = () => {
                     {editingCrew ? 'Edit Crew' : 'Add New Crew'}
                   </DialogTitle>
                   <DialogDescription>
-                    {editingCrew 
+                    {editingCrew
                       ? 'Update crew information below.'
                       : 'Create a new crew team.'
                     }
@@ -230,7 +243,7 @@ const CrewManagement = () => {
                       <Input
                         id="crew-name"
                         value={crewFormData.name}
-                        onChange={(e) => setCrewFormData({...crewFormData, name: e.target.value})}
+                        onChange={(e) => setCrewFormData({ ...crewFormData, name: e.target.value })}
                         required
                       />
                     </div>
@@ -239,7 +252,7 @@ const CrewManagement = () => {
                       <Textarea
                         id="crew-description"
                         value={crewFormData.description}
-                        onChange={(e) => setCrewFormData({...crewFormData, description: e.target.value})}
+                        onChange={(e) => setCrewFormData({ ...crewFormData, description: e.target.value })}
                         rows={3}
                       />
                     </div>
@@ -276,7 +289,7 @@ const CrewManagement = () => {
                   <TableCell>
                     <div className="flex items-center">
                       <Users className="h-4 w-4 mr-1" />
-                      {crew.members.length} members
+                      {crew.members ? crew.members.length : 0} members
                     </div>
                   </TableCell>
                   <TableCell>
@@ -332,7 +345,7 @@ const CrewManagement = () => {
                     {editingMember ? 'Edit Crew Member' : 'Add New Crew Member'}
                   </DialogTitle>
                   <DialogDescription>
-                    {editingMember 
+                    {editingMember
                       ? 'Update crew member information below.'
                       : 'Add a new crew member to your team.'
                     }
@@ -345,7 +358,7 @@ const CrewManagement = () => {
                       <Input
                         id="member-name"
                         value={memberFormData.name}
-                        onChange={(e) => setMemberFormData({...memberFormData, name: e.target.value})}
+                        onChange={(e) => setMemberFormData({ ...memberFormData, name: e.target.value })}
                         required
                       />
                     </div>
@@ -355,7 +368,7 @@ const CrewManagement = () => {
                         id="member-phone"
                         type="tel"
                         value={memberFormData.phone}
-                        onChange={(e) => setMemberFormData({...memberFormData, phone: e.target.value})}
+                        onChange={(e) => setMemberFormData({ ...memberFormData, phone: e.target.value })}
                       />
                     </div>
                     <div className="grid gap-2">
@@ -364,14 +377,14 @@ const CrewManagement = () => {
                         id="member-email"
                         type="email"
                         value={memberFormData.email}
-                        onChange={(e) => setMemberFormData({...memberFormData, email: e.target.value})}
+                        onChange={(e) => setMemberFormData({ ...memberFormData, email: e.target.value })}
                       />
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="member-position">Position</Label>
-                      <Select 
-                        value={memberFormData.position} 
-                        onValueChange={(value) => setMemberFormData({...memberFormData, position: value})}
+                      <Select
+                        value={memberFormData.position}
+                        onValueChange={(value) => setMemberFormData({ ...memberFormData, position: value })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select position" />
@@ -456,4 +469,5 @@ const CrewManagement = () => {
 }
 
 export default CrewManagement
+
 
